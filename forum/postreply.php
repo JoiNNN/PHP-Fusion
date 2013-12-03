@@ -50,7 +50,7 @@ if (isset($_POST['previewreply'])) {
 	echo "</tr>\n</table>\n";
 	closetable();
 }
-if (isset($_POST['postreply'])) {
+if (isset($_POST['postreply']) && verifyFormToken('postreply')) {
 	$message = trim(stripinput(censorwords($_POST['message'])));
 	$flood = false; $error = 0;
 	$sig = isset($_POST['show_sig']) ? "1" : "0";
@@ -163,6 +163,7 @@ if (isset($_POST['postreply'])) {
 	if (!isset($_POST['previewreply'])) echo "<div class='tbl2 forum_breadcrumbs' style='margin-bottom:5px'><a href='index.php'>".$settings['sitename']."</a> &raquo; ".$caption."</div>\n";
 
 	echo "<form name='inputform' method='post' action='".FUSION_SELF."?action=reply&amp;forum_id=".$_GET['forum_id']."&amp;thread_id=".$_GET['thread_id']."' enctype='multipart/form-data'>\n";
+	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('postreply')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='1' width='100%' class='tbl-border'>\n<tr>\n";
 	echo "<td valign='top' width='145' class='tbl2'>".$locale['461']."</td>\n";
 	echo "<td class='tbl1'><textarea name='message' cols='60' rows='15' class='textbox' style='width:98%'>$message</textarea></td>\n";

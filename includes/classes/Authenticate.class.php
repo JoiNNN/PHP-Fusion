@@ -250,6 +250,9 @@ class Authenticate {
 		Authenticate::_setCookie(COOKIE_USER, "", time() - 1209600, COOKIE_PATH, COOKIE_DOMAIN, false, true);
 		Authenticate::_setCookie(COOKIE_LASTVISIT, "", time() - 1209600, COOKIE_PATH, COOKIE_DOMAIN, false, true);
 
+		// Destroy the session
+		session_destroy();
+
 		return Authenticate::getEmptyUserData();
 	}
 

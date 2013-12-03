@@ -108,6 +108,12 @@ date_default_timezone_set($settings['default_timezone']);
 //ob_start("ob_gzhandler"); //Uncomment this line and comment the one below to enable output compression.
 ob_start();
 
+// Start session. Gets destroyed on log out or user cookie expiration.
+session_cache_limiter('private, must-revalidate'); // prevent document expiry when user hits Back in browser
+session_name('fusion_session');
+
+session_start();
+
 // Sanitise $_SERVER globals
 $_SERVER['PHP_SELF'] = cleanurl($_SERVER['PHP_SELF']);
 $_SERVER['QUERY_STRING'] = isset($_SERVER['QUERY_STRING']) ? cleanurl($_SERVER['QUERY_STRING']) : "";
@@ -210,6 +216,47 @@ if (!isset($_COOKIE[COOKIE_PREFIX.'visited'])) {
 	setcookie(COOKIE_PREFIX."visited", "yes", time() + 31536000, "/", "", "0");
 }
 $lastvisited = Authenticate::setLastVisitCookie();
+
+// Generate a unique token for forms
+function generateFormToken($form) {
+	global $userdata;
+
+	// generate a new token
+	$token = $userdata['user_id'].".".$userdata['user_lastvisit'].".".hash_hmac('sha1', $userdata['user_password'], uniqid($userdata['user_salt'], true));
+	$_SESSION['csrf_tokens'][] = $token; // add the token to the array
+
+	// maximum number of tokens to be stored
+	if(isset($_SESSION['csrf_tokens']) && count($_SESSION['csrf_tokens']) > 10) {
+		array_shift($_SESSION['csrf_tokens']); // remove element from beginning
+	}
+
+	return $token;
+}
+
+// Verify if a token is set and valid
+function verifyFormToken($form) {
+	// check if a form token is posted
+	if(!isset($_POST['fusion_token'])) {
+		return FALSE;
+	}
+	// check if a session is started
+	if(!isset($_SESSION['csrf_tokens'])) {
+		return FALSE;
+	}
+	// check to see if the token isn't in the stored array of generated tokens
+	if (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'])) {
+		return FALSE;
+	} else {
+		// remove the token from the array as it has been used
+		foreach ($_SESSION['csrf_tokens'] as $key => $val) {
+			if ($val == $_POST['fusion_token']) {
+				unset($_SESSION['csrf_tokens'][$key]);
+			}
+		}
+	}
+
+	return TRUE;
+}
 
 // MySQL database functions
 function dbquery($query) {

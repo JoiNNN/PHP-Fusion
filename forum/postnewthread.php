@@ -84,7 +84,7 @@ if (isset($_POST['previewpost']) || isset($_POST['add_poll_option'])) {
 		closetable();
 	}
 }
-if (isset($_POST['postnewthread'])) {
+if (isset($_POST['postnewthread']) && verifyFormToken('postnewthread')) {
 	$subject = trim(stripinput(censorwords($_POST['subject'])));
 	$message = trim(stripinput(censorwords($_POST['message'])));
 	$flood = false; $error = 0;
@@ -192,6 +192,7 @@ if (isset($_POST['postnewthread'])) {
 	if (!isset($_POST['previewpost'])) { echo "<div class='tbl2 forum_breadcrumbs' style='margin-bottom:5px'><a href='index.php'>".$settings['sitename']."</a> &raquo; ".$caption."</div>\n"; }
 
 	echo "<form id='inputform' method='post' action='".FUSION_SELF."?action=newthread&amp;forum_id=".$_GET['forum_id']."' enctype='multipart/form-data'>\n";
+	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('postnewthread')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='1' width='100%' class='tbl-border'>\n<tr>\n";
 	echo "<td width='145' class='tbl2'>".$locale['460']."</td>\n";
 	echo "<td class='tbl1'><input type='text' name='subject' value='".$subject."' class='textbox' maxlength='255' style='width: 250px' /></td>\n";
