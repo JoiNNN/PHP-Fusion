@@ -222,11 +222,11 @@ function generateFormToken($form) {
 	global $userdata;
 
 	// generate a new token
-	$token = $userdata['user_id'].".".$userdata['user_lastvisit'].".".hash_hmac('sha1', $userdata['user_password'], uniqid($userdata['user_salt'], true));
+	$token = $userdata['user_id'].".".$userdata['user_lastvisit'].".".hash_hmac('sha1', $userdata['user_password'], $form.$userdata['user_salt'].$userdata['user_lastvisit']);
 	$_SESSION['csrf_tokens'][] = $token; // add the token to the array
 
 	// maximum number of tokens to be stored
-	if(isset($_SESSION['csrf_tokens']) && count($_SESSION['csrf_tokens']) > 10) {
+	if(isset($_SESSION['csrf_tokens']) && count($_SESSION['csrf_tokens']) > 50) {
 		array_shift($_SESSION['csrf_tokens']); // remove element from beginning
 	}
 
@@ -235,6 +235,8 @@ function generateFormToken($form) {
 
 // Verify if a token is set and valid
 function verifyFormToken($form) {
+	global $userdata;
+
 	// check if a form token is posted
 	if(!isset($_POST['fusion_token'])) {
 		return FALSE;
@@ -243,15 +245,34 @@ function verifyFormToken($form) {
 	if(!isset($_SESSION['csrf_tokens'])) {
 		return FALSE;
 	}
-	// check to see if the token isn't in the stored array of generated tokens
+	// check if the token is in the array
 	if (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'])) {
 		return FALSE;
+	}
+	// explode posted token in an array
+	$token_data = explode(".", stripinput($_POST['fusion_token']));
+	if (count($token_data) == 3) {
+		list($user_id, $last_visit, $hash) = $token_data;
 	} else {
-		// remove the token from the array as it has been used
-		foreach ($_SESSION['csrf_tokens'] as $key => $val) {
-			if ($val == $_POST['fusion_token']) {
-				unset($_SESSION['csrf_tokens'][$key]);
-			}
+		return FALSE;
+	}
+	// check if posted user id matches the user's id
+	if ($user_id != $userdata['user_id']) {
+		return FALSE;
+	}
+	// prevent posting too fast
+	if (time() - $last_visit < 10) {
+		return FALSE;
+	}
+	// check is posted hash is valid
+	if ($hash != hash_hmac('sha1', $userdata['user_password'], $form.$userdata['user_salt'].$last_visit)) {
+		return FALSE;
+	}
+
+	// remove the token from the array as it has been used
+	foreach ($_SESSION['csrf_tokens'] as $key => $val) {
+		if ($val == $_POST['fusion_token']) {
+			unset($_SESSION['csrf_tokens'][$key]);
 		}
 	}
 
