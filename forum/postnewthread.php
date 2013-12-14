@@ -84,95 +84,97 @@ if (isset($_POST['previewpost']) || isset($_POST['add_poll_option'])) {
 		closetable();
 	}
 }
-if (isset($_POST['postnewthread']) && verifyFormToken('postnewthread')) {
-	$subject = trim(stripinput(censorwords($_POST['subject'])));
-	$message = trim(stripinput(censorwords($_POST['message'])));
-	$flood = false; $error = 0;
-	$sticky_thread = isset($_POST['sticky_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
-	$lock_thread = isset($_POST['lock_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
-	$sig = isset($_POST['show_sig']) ? 1 : 0;
-	$smileys = isset($_POST['disable_smileys']) || preg_match("#(\[code\](.*?)\[/code\]|\[geshi=(.*?)\](.*?)\[/geshi\]|\[php\](.*?)\[/php\])#si", $message) ? 0 : 1;
-	$thread_poll = 0;
-	$poll_opts = array();
+if (isset($_POST['postnewthread'])) {
+	if (verifyFormToken('postnewthread')) {
+		$subject = trim(stripinput(censorwords($_POST['subject'])));
+		$message = trim(stripinput(censorwords($_POST['message'])));
+		$flood = false; $error = 0;
+		$sticky_thread = isset($_POST['sticky_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
+		$lock_thread = isset($_POST['lock_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
+		$sig = isset($_POST['show_sig']) ? 1 : 0;
+		$smileys = isset($_POST['disable_smileys']) || preg_match("#(\[code\](.*?)\[/code\]|\[geshi=(.*?)\](.*?)\[/geshi\]|\[php\](.*?)\[/php\])#si", $message) ? 0 : 1;
+		$thread_poll = 0;
+		$poll_opts = array();
 
-	if ($fdata['forum_poll'] && checkgroup($fdata['forum_poll'])) {
-		if (isset($_POST['poll_options']) && is_array($_POST['poll_options'])) {
-			foreach ($_POST['poll_options'] as $poll_option) {
-				if (trim($poll_option)) { $poll_opts[] = trim(stripinput(censorwords($poll_option))); }
-				unset($poll_option);
-			}
-		}
-		$thread_poll = (trim($_POST['poll_title']) && (isset($poll_opts) && is_array($poll_opts)) ? 1 : 0);
-	}
-
-	if (iMEMBER) {
-		if ($subject != "" && $message != "") {
-			require_once INCLUDES."flood_include.php";
-			if (!flood_control("post_datestamp", DB_POSTS, "post_author='".$userdata['user_id']."'")) {
-				$result = dbquery("INSERT INTO ".DB_THREADS." (forum_id, thread_subject, thread_author, thread_views, thread_lastpost, thread_lastpostid, thread_lastuser, thread_postcount, thread_poll, thread_sticky, thread_locked) VALUES('".$_GET['forum_id']."', '$subject', '".$userdata['user_id']."', '0', '".time()."', '0', '".$userdata['user_id']."', '1', '".$thread_poll."', '".$sticky_thread."', '".$lock_thread."')");
-				$thread_id = mysql_insert_id();
-				$result = dbquery("INSERT INTO ".DB_POSTS." (forum_id, thread_id, post_message, post_showsig, post_smileys, post_author, post_datestamp, post_ip, post_ip_type, post_edituser, post_edittime, post_editreason) VALUES ('".$_GET['forum_id']."', '".$thread_id."', '".$message."', '".$sig."', '".$smileys."', '".$userdata['user_id']."', '".time()."', '".USER_IP."', '".USER_IP_TYPE."', '0', '0', '')");
-				$post_id = mysql_insert_id();
-				$result = dbquery("UPDATE ".DB_FORUMS." SET forum_lastpost='".time()."', forum_postcount=forum_postcount+1, forum_threadcount=forum_threadcount+1, forum_lastuser='".$userdata['user_id']."' WHERE forum_id='".$_GET['forum_id']."'");
-				$result = dbquery("UPDATE ".DB_THREADS." SET thread_lastpostid='".$post_id."' WHERE thread_id='".$thread_id."'");
-				$result = dbquery("UPDATE ".DB_USERS." SET user_posts=user_posts+1 WHERE user_id='".$userdata['user_id']."'");
-				if ($settings['thread_notify'] && isset($_POST['notify_me'])) { $result = dbquery("INSERT INTO ".DB_THREAD_NOTIFY." (thread_id, notify_datestamp, notify_user, notify_status) VALUES('".$thread_id."', '".time()."', '".$userdata['user_id']."', '1')"); }
-
-				if (($fdata['forum_poll'] && checkgroup($fdata['forum_poll'])) && $thread_poll) {
-					$poll_title = trim(stripinput(censorwords($_POST['poll_title'])));
-					if ($poll_title && (isset($poll_opts) && is_array($poll_opts))) {
-						$result = dbquery("INSERT INTO ".DB_FORUM_POLLS." (thread_id, forum_poll_title, forum_poll_start, forum_poll_length, forum_poll_votes) VALUES('".$thread_id."', '".$poll_title."', '".time()."', '0', '0')");
-						$forum_poll_id = mysql_insert_id();
-						$i = 1;
-						foreach ($poll_opts as $poll_option) {
-							$result = dbquery("INSERT INTO ".DB_FORUM_POLL_OPTIONS." (thread_id, forum_poll_option_id, forum_poll_option_text, forum_poll_option_votes) VALUES('".$thread_id."', '".$i."', '".$poll_option."', '0')");
-							$i++;
-						}
-					}
+		if ($fdata['forum_poll'] && checkgroup($fdata['forum_poll'])) {
+			if (isset($_POST['poll_options']) && is_array($_POST['poll_options'])) {
+				foreach ($_POST['poll_options'] as $poll_option) {
+					if (trim($poll_option)) { $poll_opts[] = trim(stripinput(censorwords($poll_option))); }
+					unset($poll_option);
 				}
+			}
+			$thread_poll = (trim($_POST['poll_title']) && (isset($poll_opts) && is_array($poll_opts)) ? 1 : 0);
+		}
 
-				if ($fdata['forum_attach'] && checkgroup($fdata['forum_attach'])) {
-						// $attach = $_FILES['attach'];
-					foreach($_FILES as $attach){
-						if ($attach['name'] != "" && !empty($attach['name']) && is_uploaded_file($attach['tmp_name'])) {
-							$attachname = stripfilename(substr($attach['name'], 0, strrpos($attach['name'], ".")));
-							$attachext = strtolower(strrchr($attach['name'],"."));
-							if (preg_match("/^[-0-9A-Z_\[\]]+$/i", $attachname) && $attach['size'] <= $settings['attachmax']) {
-								$attachtypes = explode(",", $settings['attachtypes']);
-								if (in_array($attachext, $attachtypes)) {
-									$attachname .= $attachext;
-									$attachname = attach_exists(strtolower($attachname));
-									move_uploaded_file($attach['tmp_name'], FORUM."attachments/".$attachname);
-									chmod(FORUM."attachments/".$attachname,0644);
-									if (in_array($attachext, $imagetypes) && (!@getimagesize(FORUM."attachments/".$attachname) || !@verify_image(FORUM."attachments/".$attachname))) {
-										unlink(FORUM."attachments/".$attachname);
-										$error = 1;
-									}
-									if (!$error) { $result = dbquery("INSERT INTO ".DB_FORUM_ATTACHMENTS." (thread_id, post_id, attach_name, attach_ext, attach_size) VALUES ('".$thread_id."', '".$post_id."', '".$attachname."', '".$attachext."', '".$attach['size']."')"); }
-								} else {
-									@unlink($attach['tmp_name']);
-									$error = 1;
-								}
-							} else {
-								@unlink($attach['tmp_name']);
-								$error = 2;
+		if (iMEMBER) {
+			if ($subject != "" && $message != "") {
+				require_once INCLUDES."flood_include.php";
+				if (!flood_control("post_datestamp", DB_POSTS, "post_author='".$userdata['user_id']."'")) {
+					$result = dbquery("INSERT INTO ".DB_THREADS." (forum_id, thread_subject, thread_author, thread_views, thread_lastpost, thread_lastpostid, thread_lastuser, thread_postcount, thread_poll, thread_sticky, thread_locked) VALUES('".$_GET['forum_id']."', '$subject', '".$userdata['user_id']."', '0', '".time()."', '0', '".$userdata['user_id']."', '1', '".$thread_poll."', '".$sticky_thread."', '".$lock_thread."')");
+					$thread_id = mysql_insert_id();
+					$result = dbquery("INSERT INTO ".DB_POSTS." (forum_id, thread_id, post_message, post_showsig, post_smileys, post_author, post_datestamp, post_ip, post_ip_type, post_edituser, post_edittime, post_editreason) VALUES ('".$_GET['forum_id']."', '".$thread_id."', '".$message."', '".$sig."', '".$smileys."', '".$userdata['user_id']."', '".time()."', '".USER_IP."', '".USER_IP_TYPE."', '0', '0', '')");
+					$post_id = mysql_insert_id();
+					$result = dbquery("UPDATE ".DB_FORUMS." SET forum_lastpost='".time()."', forum_postcount=forum_postcount+1, forum_threadcount=forum_threadcount+1, forum_lastuser='".$userdata['user_id']."' WHERE forum_id='".$_GET['forum_id']."'");
+					$result = dbquery("UPDATE ".DB_THREADS." SET thread_lastpostid='".$post_id."' WHERE thread_id='".$thread_id."'");
+					$result = dbquery("UPDATE ".DB_USERS." SET user_posts=user_posts+1 WHERE user_id='".$userdata['user_id']."'");
+					if ($settings['thread_notify'] && isset($_POST['notify_me'])) { $result = dbquery("INSERT INTO ".DB_THREAD_NOTIFY." (thread_id, notify_datestamp, notify_user, notify_status) VALUES('".$thread_id."', '".time()."', '".$userdata['user_id']."', '1')"); }
+
+					if (($fdata['forum_poll'] && checkgroup($fdata['forum_poll'])) && $thread_poll) {
+						$poll_title = trim(stripinput(censorwords($_POST['poll_title'])));
+						if ($poll_title && (isset($poll_opts) && is_array($poll_opts))) {
+							$result = dbquery("INSERT INTO ".DB_FORUM_POLLS." (thread_id, forum_poll_title, forum_poll_start, forum_poll_length, forum_poll_votes) VALUES('".$thread_id."', '".$poll_title."', '".time()."', '0', '0')");
+							$forum_poll_id = mysql_insert_id();
+							$i = 1;
+							foreach ($poll_opts as $poll_option) {
+								$result = dbquery("INSERT INTO ".DB_FORUM_POLL_OPTIONS." (thread_id, forum_poll_option_id, forum_poll_option_text, forum_poll_option_votes) VALUES('".$thread_id."', '".$i."', '".$poll_option."', '0')");
+								$i++;
 							}
 						}
 					}
+
+					if ($fdata['forum_attach'] && checkgroup($fdata['forum_attach'])) {
+							// $attach = $_FILES['attach'];
+						foreach($_FILES as $attach){
+							if ($attach['name'] != "" && !empty($attach['name']) && is_uploaded_file($attach['tmp_name'])) {
+								$attachname = stripfilename(substr($attach['name'], 0, strrpos($attach['name'], ".")));
+								$attachext = strtolower(strrchr($attach['name'],"."));
+								if (preg_match("/^[-0-9A-Z_\[\]]+$/i", $attachname) && $attach['size'] <= $settings['attachmax']) {
+									$attachtypes = explode(",", $settings['attachtypes']);
+									if (in_array($attachext, $attachtypes)) {
+										$attachname .= $attachext;
+										$attachname = attach_exists(strtolower($attachname));
+										move_uploaded_file($attach['tmp_name'], FORUM."attachments/".$attachname);
+										chmod(FORUM."attachments/".$attachname,0644);
+										if (in_array($attachext, $imagetypes) && (!@getimagesize(FORUM."attachments/".$attachname) || !@verify_image(FORUM."attachments/".$attachname))) {
+											unlink(FORUM."attachments/".$attachname);
+											$error = 1;
+										}
+										if (!$error) { $result = dbquery("INSERT INTO ".DB_FORUM_ATTACHMENTS." (thread_id, post_id, attach_name, attach_ext, attach_size) VALUES ('".$thread_id."', '".$post_id."', '".$attachname."', '".$attachext."', '".$attach['size']."')"); }
+									} else {
+										@unlink($attach['tmp_name']);
+										$error = 1;
+									}
+								} else {
+									@unlink($attach['tmp_name']);
+									$error = 2;
+								}
+							}
+						}
+					}
+				} else {
+						redirect("viewforum.php?forum_id=".$_GET['forum_id']);
 				}
 			} else {
-					redirect("viewforum.php?forum_id=".$_GET['forum_id']);
+				$error = 3;
 			}
 		} else {
-			$error = 3;
+			$error = 4;
 		}
-	} else {
-		$error = 4;
-	}
-	if ($error > 2) {
-		redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']);
-	} else {
-		redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$thread_id."");
+		if ($error > 2) {
+			redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']);
+		} else {
+			redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$thread_id."");
+		}
 	}
 } else {
 	if (!isset($_POST['previewpost']) && !isset($_POST['add_poll_option'])) {

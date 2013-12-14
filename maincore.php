@@ -234,38 +234,46 @@ function generateFormToken($form) {
 }
 
 // Verify if a token is set and valid
-function verifyFormToken($form) {
-	global $userdata;
+function verifyFormToken($form, $post_time = 10) {
+	global $userdata; $error = FALSE;
 
 	// check if a form token is posted
-	if(!isset($_POST['fusion_token'])) {
-		return FALSE;
+	if (!isset($_POST['fusion_token'])) {
+		$error .= "Token was not posted.<br />";
 	}
 	// check if a session is started
-	if(!isset($_SESSION['csrf_tokens'])) {
-		return FALSE;
+	if (!isset($_SESSION['csrf_tokens'])) {
+		$error .= "Session not started.<br />";
 	}
 	// check if the token is in the array
 	if (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'])) {
-		return FALSE;
+		$error .= "Invalid token.<br />";
 	}
 	// explode posted token in an array
 	$token_data = explode(".", stripinput($_POST['fusion_token']));
 	if (count($token_data) == 3) {
 		list($user_id, $last_visit, $hash) = $token_data;
 	} else {
-		return FALSE;
+		$error .= "Invalid token format.<br />";
 	}
 	// check if posted user id matches the user's id
 	if ($user_id != $userdata['user_id']) {
-		return FALSE;
+		$error .= "Invalid UserID within token.<br />";
 	}
 	// prevent posting too fast
-	if (time() - $last_visit < 10) {
-		return FALSE;
+	if (time() - $last_visit < $post_time) {
+		$error .= "Posted too fast. Take a break.<br />";
 	}
 	// check is posted hash is valid
 	if ($hash != hash_hmac('sha1', $userdata['user_password'], $form.$userdata['user_salt'].$last_visit)) {
+		$error .= "Invalid token hash.";
+	}
+
+	if ($error) {
+		opentable("Error");
+		echo $error;
+		closetable();
+
 		return FALSE;
 	}
 

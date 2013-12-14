@@ -50,88 +50,91 @@ if (isset($_POST['previewreply'])) {
 	echo "</tr>\n</table>\n";
 	closetable();
 }
-if (isset($_POST['postreply']) && verifyFormToken('postreply')) {
-	$message = trim(stripinput(censorwords($_POST['message'])));
-	$flood = false; $error = 0;
-	$sig = isset($_POST['show_sig']) ? "1" : "0";
-	$smileys = isset($_POST['disable_smileys']) || preg_match("#(\[code\](.*?)\[/code\]|\[geshi=(.*?)\](.*?)\[/geshi\]|\[php\](.*?)\[/php\])#si", $message) ? "0" : "1";
-	if (iMEMBER) {
-		if ($message != "") {
-			require_once INCLUDES."flood_include.php";
-			if (!flood_control("post_datestamp", DB_POSTS, "post_author='".$userdata['user_id']."'")) {
-				if ($fdata['forum_merge'] && $tdata['thread_lastuser'] == $userdata['user_id']) {
-					$mergeData = dbarray(dbquery("SELECT post_id, post_message FROM ".DB_POSTS." WHERE thread_id='".$_GET['thread_id']."' ORDER BY post_id DESC"));
-					$mergedMessage = $mergeData['post_message']."\n\n".$locale['520']." ".showdate("longdate", time()).":\n".$message;
 
-					$result = dbquery(
-						"UPDATE ".DB_POSTS." SET
-							post_message='".$mergedMessage."',
-							post_showsig='".$sig."',
-							post_smileys='".$smileys."',
-							post_edituser='".$userdata['user_id']."',
-							post_edittime='".time()."'
-						WHERE post_id='".$mergeData['post_id']."'"
-					);
-					$post_id = $mergeData['post_id'];
-					$threadCount = "";
-					$postCount = "";
-				} else {
-					$result = dbquery("INSERT INTO ".DB_POSTS." (forum_id, thread_id, post_message, post_showsig, post_smileys, post_author, post_datestamp, post_ip, post_ip_type, post_edituser, post_edittime, post_editreason) VALUES ('".$_GET['forum_id']."', '".$_GET['thread_id']."', '$message', '$sig', '$smileys', '".$userdata['user_id']."', '".time()."', '".USER_IP."', '".USER_IP_TYPE."', '0', '0', '')");
-					$post_id = mysql_insert_id();
-					$result = dbquery("UPDATE ".DB_USERS." SET user_posts=user_posts+1 WHERE user_id='".$userdata['user_id']."'");
-					$threadCount = "thread_postcount=thread_postcount+1,";
-					$postCount = "forum_postcount=forum_postcount+1,";
-				}
-				$result = dbquery("UPDATE ".DB_FORUMS." SET forum_lastpost='".time()."', ".$postCount." forum_lastuser='".$userdata['user_id']."' WHERE forum_id='".$_GET['forum_id']."'");
-				$result = dbquery("UPDATE ".DB_THREADS." SET thread_lastpost='".time()."', thread_lastpostid='".$post_id."', ".$threadCount." thread_lastuser='".$userdata['user_id']."' WHERE thread_id='".$_GET['thread_id']."'");
-				if ($settings['thread_notify'] && isset($_POST['notify_me'])) {
-					if (!dbcount("(thread_id)", DB_THREAD_NOTIFY, "thread_id='".$_GET['thread_id']."' AND notify_user='".$userdata['user_id']."'")) {
-						$result = dbquery("INSERT INTO ".DB_THREAD_NOTIFY." (thread_id, notify_datestamp, notify_user, notify_status) VALUES('".$_GET['thread_id']."', '".time()."', '".$userdata['user_id']."', '1')");
+if (isset($_POST['postreply'])) {
+	if (verifyFormToken('postreply')) {
+		$message = trim(stripinput(censorwords($_POST['message'])));
+		$flood = false; $error = 0;
+		$sig = isset($_POST['show_sig']) ? "1" : "0";
+		$smileys = isset($_POST['disable_smileys']) || preg_match("#(\[code\](.*?)\[/code\]|\[geshi=(.*?)\](.*?)\[/geshi\]|\[php\](.*?)\[/php\])#si", $message) ? "0" : "1";
+		if (iMEMBER) {
+			if ($message != "") {
+				require_once INCLUDES."flood_include.php";
+				if (!flood_control("post_datestamp", DB_POSTS, "post_author='".$userdata['user_id']."'")) {
+					if ($fdata['forum_merge'] && $tdata['thread_lastuser'] == $userdata['user_id']) {
+						$mergeData = dbarray(dbquery("SELECT post_id, post_message FROM ".DB_POSTS." WHERE thread_id='".$_GET['thread_id']."' ORDER BY post_id DESC"));
+						$mergedMessage = $mergeData['post_message']."\n\n".$locale['520']." ".showdate("longdate", time()).":\n".$message;
+
+						$result = dbquery(
+							"UPDATE ".DB_POSTS." SET
+								post_message='".$mergedMessage."',
+								post_showsig='".$sig."',
+								post_smileys='".$smileys."',
+								post_edituser='".$userdata['user_id']."',
+								post_edittime='".time()."'
+							WHERE post_id='".$mergeData['post_id']."'"
+						);
+						$post_id = $mergeData['post_id'];
+						$threadCount = "";
+						$postCount = "";
+					} else {
+						$result = dbquery("INSERT INTO ".DB_POSTS." (forum_id, thread_id, post_message, post_showsig, post_smileys, post_author, post_datestamp, post_ip, post_ip_type, post_edituser, post_edittime, post_editreason) VALUES ('".$_GET['forum_id']."', '".$_GET['thread_id']."', '$message', '$sig', '$smileys', '".$userdata['user_id']."', '".time()."', '".USER_IP."', '".USER_IP_TYPE."', '0', '0', '')");
+						$post_id = mysql_insert_id();
+						$result = dbquery("UPDATE ".DB_USERS." SET user_posts=user_posts+1 WHERE user_id='".$userdata['user_id']."'");
+						$threadCount = "thread_postcount=thread_postcount+1,";
+						$postCount = "forum_postcount=forum_postcount+1,";
 					}
-				}
+					$result = dbquery("UPDATE ".DB_FORUMS." SET forum_lastpost='".time()."', ".$postCount." forum_lastuser='".$userdata['user_id']."' WHERE forum_id='".$_GET['forum_id']."'");
+					$result = dbquery("UPDATE ".DB_THREADS." SET thread_lastpost='".time()."', thread_lastpostid='".$post_id."', ".$threadCount." thread_lastuser='".$userdata['user_id']."' WHERE thread_id='".$_GET['thread_id']."'");
+					if ($settings['thread_notify'] && isset($_POST['notify_me'])) {
+						if (!dbcount("(thread_id)", DB_THREAD_NOTIFY, "thread_id='".$_GET['thread_id']."' AND notify_user='".$userdata['user_id']."'")) {
+							$result = dbquery("INSERT INTO ".DB_THREAD_NOTIFY." (thread_id, notify_datestamp, notify_user, notify_status) VALUES('".$_GET['thread_id']."', '".time()."', '".$userdata['user_id']."', '1')");
+						}
+					}
 
-				if ($fdata['forum_attach'] && checkgroup($fdata['forum_attach'])) {
-						// $attach = $_FILES['attach'];
-					foreach($_FILES as $attach){
-						if ($attach['name'] != "" && !empty($attach['name']) && is_uploaded_file($attach['tmp_name'])) {
-							$attachname = stripfilename(substr($attach['name'], 0, strrpos($attach['name'], ".")));
-							$attachext = strtolower(strrchr($attach['name'],"."));
-							if (preg_match("/^[-0-9A-Z_\[\]]+$/i", $attachname) && $attach['size'] <= $settings['attachmax']) {
-								$attachtypes = explode(",", $settings['attachtypes']);
-								if (in_array($attachext, $attachtypes)) {
-									$attachname .= $attachext;
-									$attachname = attach_exists(strtolower($attachname));
-									move_uploaded_file($attach['tmp_name'], FORUM."attachments/".$attachname);
-									chmod(FORUM."attachments/".$attachname,0644);
-									if (in_array($attachext, $imagetypes) && (!@getimagesize(FORUM."attachments/".$attachname) || !@verify_image(FORUM."attachments/".$attachname))) {
-										unlink(FORUM."attachments/".$attachname);
+					if ($fdata['forum_attach'] && checkgroup($fdata['forum_attach'])) {
+							// $attach = $_FILES['attach'];
+						foreach($_FILES as $attach){
+							if ($attach['name'] != "" && !empty($attach['name']) && is_uploaded_file($attach['tmp_name'])) {
+								$attachname = stripfilename(substr($attach['name'], 0, strrpos($attach['name'], ".")));
+								$attachext = strtolower(strrchr($attach['name'],"."));
+								if (preg_match("/^[-0-9A-Z_\[\]]+$/i", $attachname) && $attach['size'] <= $settings['attachmax']) {
+									$attachtypes = explode(",", $settings['attachtypes']);
+									if (in_array($attachext, $attachtypes)) {
+										$attachname .= $attachext;
+										$attachname = attach_exists(strtolower($attachname));
+										move_uploaded_file($attach['tmp_name'], FORUM."attachments/".$attachname);
+										chmod(FORUM."attachments/".$attachname,0644);
+										if (in_array($attachext, $imagetypes) && (!@getimagesize(FORUM."attachments/".$attachname) || !@verify_image(FORUM."attachments/".$attachname))) {
+											unlink(FORUM."attachments/".$attachname);
+											$error = 1;
+										}
+										if (!$error) { $result = dbquery("INSERT INTO ".DB_FORUM_ATTACHMENTS." (thread_id, post_id, attach_name, attach_ext, attach_size) VALUES ('".$_GET['thread_id']."', '".$post_id."', '$attachname', '$attachext', '".$attach['size']."')"); }
+									} else {
+										@unlink($attach['tmp_name']);
 										$error = 1;
 									}
-									if (!$error) { $result = dbquery("INSERT INTO ".DB_FORUM_ATTACHMENTS." (thread_id, post_id, attach_name, attach_ext, attach_size) VALUES ('".$_GET['thread_id']."', '".$post_id."', '$attachname', '$attachext', '".$attach['size']."')"); }
 								} else {
 									@unlink($attach['tmp_name']);
-									$error = 1;
+									$error = 2;
 								}
-							} else {
-								@unlink($attach['tmp_name']);
-								$error = 2;
 							}
 						}
 					}
+				} else {
+						redirect("viewforum.php?forum_id=".$_GET['forum_id']);
 				}
 			} else {
-					redirect("viewforum.php?forum_id=".$_GET['forum_id']);
+				$error = 3;
 			}
 		} else {
-			$error = 3;
+			$error = 4;
 		}
-	} else {
-		$error = 4;
-	}
-	if ($error > 2) {
-		redirect("postify.php?post=reply&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$_GET['thread_id']);
-	} else {
-		redirect("postify.php?post=reply&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$_GET['thread_id']."&post_id=$post_id");
+		if ($error > 2) {
+			redirect("postify.php?post=reply&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$_GET['thread_id']);
+		} else {
+			redirect("postify.php?post=reply&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$_GET['thread_id']."&post_id=$post_id");
+		}
 	}
 } else {
 	if (!isset($_POST['previewreply'])) {
@@ -155,13 +158,12 @@ if (isset($_POST['postreply']) && verifyFormToken('postreply')) {
 		if (dbrows($result)) {
 			$data = dbarray($result);
 			$message = "[quote name=".$data['user_name']." post=".$_GET['quote']."]".strip_bbcodes($data['post_message'])."[/quote]";
-			}
+		}
 	}
 	add_to_title($locale['global_201'].$locale['403']);
 	echo "<!--pre_postreply-->";
 	opentable($locale['403']);
 	if (!isset($_POST['previewreply'])) echo "<div class='tbl2 forum_breadcrumbs' style='margin-bottom:5px'><a href='index.php'>".$settings['sitename']."</a> &raquo; ".$caption."</div>\n";
-
 	echo "<form name='inputform' method='post' action='".FUSION_SELF."?action=reply&amp;forum_id=".$_GET['forum_id']."&amp;thread_id=".$_GET['thread_id']."' enctype='multipart/form-data'>\n";
 	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('postreply')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='1' width='100%' class='tbl-border'>\n<tr>\n";
