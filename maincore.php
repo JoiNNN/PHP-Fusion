@@ -219,10 +219,21 @@ $lastvisited = Authenticate::setLastVisitCookie();
 
 // Generate a unique token for forms
 function generateFormToken($form) {
-	global $userdata;
+	global $settings, $userdata;
+
+	$user_id = 0;
+	$token_time = time();
+	$algo = $settings['password_algorithm'];
+	$salt = "Some Unique String Here";
+	if (iMEMBER) {
+		$user_id = $userdata['user_id'];
+		$token_time = $userdata['user_lastvisit'];
+		$algo = $userdata['user_algo'];
+		$salt = $userdata['user_salt'];
+	}
 
 	// generate a new token
-	$token = $userdata['user_id'].".".$userdata['user_lastvisit'].".".hash_hmac('sha1', $userdata['user_password'], $form.$userdata['user_salt'].$userdata['user_lastvisit']);
+	$token = $user_id.".".$token_time.".".hash_hmac($algo, $user_id.$token_time.$form, $salt);
 	$_SESSION['csrf_tokens'][] = $token; // add the token to the array
 
 	// maximum number of tokens to be stored
@@ -234,46 +245,71 @@ function generateFormToken($form) {
 }
 
 // Verify if a token is set and valid
-function verifyFormToken($form, $post_time = 10) {
-	global $userdata; $error = FALSE;
+function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler") {
+	global $settings, $userdata; $error = array();
 
-	// check if a form token is posted
-	if (!isset($_POST['fusion_token'])) {
-		$error .= "Token was not posted.<br />";
+	// errors IDs and details
+	$errors = array(
+		"1" => "Session not started.",
+		"2" => "Token was not posted.",
+		"3" => "Invalid token.",
+		"4" => "Invalid UserID within token.",
+		"5" => "Invalid token datestamp.",
+		"6" => "Posted too fast. Take a break.",
+		"7" => "Invalid token hash.",
+		"8" => "Invalid token format.",
+	);
+
+	$user_id = 0;
+	$algo = $settings['password_algorithm'];
+	$salt = "Some Unique String Here";
+	if (iMEMBER) {
+		$user_id = $userdata['user_id'];
+		$algo = $userdata['user_algo'];
+		$salt = $userdata['user_salt'];
 	}
-	// check if a session is started
+
 	if (!isset($_SESSION['csrf_tokens'])) {
-		$error .= "Session not started.<br />";
-	}
-	// check if the token is in the array
-	if (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'])) {
-		$error .= "Invalid token.<br />";
-	}
-	// explode posted token in an array
-	$token_data = explode(".", stripinput($_POST['fusion_token']));
-	if (count($token_data) == 3) {
-		list($user_id, $last_visit, $hash) = $token_data;
+		$error[1] = $errors["1"];
+	} elseif (!isset($_POST['fusion_token'])) {
+		$error[2] = $errors["2"];
+	} elseif (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'])) {
+		$error[3] = $errors["3"];
 	} else {
-		$error .= "Invalid token format.<br />";
-	}
-	// check if posted user id matches the user's id
-	if ($user_id != $userdata['user_id']) {
-		$error .= "Invalid UserID within token.<br />";
-	}
-	// prevent posting too fast
-	if (time() - $last_visit < $post_time) {
-		$error .= "Posted too fast. Take a break.<br />";
-	}
-	// check is posted hash is valid
-	if ($hash != hash_hmac('sha1', $userdata['user_password'], $form.$userdata['user_salt'].$last_visit)) {
-		$error .= "Invalid token hash.";
+		$token_data = explode(".", stripinput($_POST['fusion_token']));
+		if (count($token_data) == 3) {
+			list($tuser_id, $token_time, $hash) = $token_data;
+
+			if ($tuser_id != $user_id) {
+				$error[4] = $errors["4"];
+			} elseif (!isnum($token_time)) {
+				$error[5] = $errors["5"];
+			} elseif (time() - $token_time < $post_time) {
+				$error[6] = $errors["6"];
+			} elseif ($hash != hash_hmac($algo, $user_id.$token_time.$form, $salt)) {
+				$error[7] = $errors["7"];
+			}
+		} else {
+			$error[8] = $errors["8"];
+		}
 	}
 
+	// parse callback function 
+	if (!empty($callback) && function_exists($callback)) {
+		$data = array(
+			"post_time" => $post_time,
+			"user_id" 	=> $user_id,
+			"algo" 		=> $algo,
+			"salt" 		=> $salt,
+		);
+		if (isset($token_time)) { $data['token_time'] = $token_time; }
+		if (isset($hash)) { $data['hash'] = $hash; }
+
+		$callback($error, $data);
+	}
+
+	// check if there are any errors
 	if ($error) {
-		opentable("Error");
-		echo $error;
-		closetable();
-
 		return FALSE;
 	}
 
@@ -285,6 +321,18 @@ function verifyFormToken($form, $post_time = 10) {
 	}
 
 	return TRUE;
+}
+
+function tokenHandler($error, $data) {
+	if ($error) {
+		opentable("Error");
+		echo "We're sorry, there was an error. Please go Back, Refresh the page and try again.";
+		echo "<pre>";
+		print_r($error);
+		print_r($data);
+		echo "</pre>";
+		closetable();
+	}
 }
 
 // MySQL database functions
