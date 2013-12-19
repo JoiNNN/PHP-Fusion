@@ -28,18 +28,20 @@ add_to_title($locale['global_200'].$locale['u102']);
 $errors = array();
 
 if (isset($_POST['update_profile'])) {
-	$userInput 						= new UserFieldsInput();
-	$userInput->setUserNameChange($settings['userNameChange']);
-	$userInput->verifyNewEmail		= true;
-	$userInput->userData 			= $userdata;
-	$userInput->saveUpdate();
-	$userInput->displayMessages();
-	$errors 						= $userInput->getErrorsArray();
+	if (verifyFormToken('update_profile', 2)) {
+		$userInput 						= new UserFieldsInput();
+		$userInput->setUserNameChange($settings['userNameChange']);
+		$userInput->verifyNewEmail		= true;
+		$userInput->userData 			= $userdata;
+		$userInput->saveUpdate();
+		$userInput->displayMessages();
+		$errors 						= $userInput->getErrorsArray();
 
-	if (empty($errors) && $userInput->themeChanged()) redirect(FUSION_SELF);
+		if (empty($errors) && $userInput->themeChanged()) redirect(FUSION_SELF);
 
-	$userdata = dbarray(dbquery("SELECT * FROM ".DB_USERS." WHERE user_id='".$userdata['user_id']."'"));
-	unset($userInput);
+		$userdata = dbarray(dbquery("SELECT * FROM ".DB_USERS." WHERE user_id='".$userdata['user_id']."'"));
+		unset($userInput);
+	}
 } elseif (isset($_GET['code']) && $settings['email_verification'] == "1") {
 	$userInput 						= new UserFieldsInput();
 	$userInput->verifyCode($_GET['code']);

@@ -60,16 +60,18 @@ if (isset($_GET['email']) && isset($_GET['code'])) {
 		redirect("index.php");
 	}
 } elseif (isset($_POST['register'])) {
-	$userInput = new UserFieldsInput();
-	$userInput->validation 				= $settings['display_validation'];
-	$userInput->emailVerification 		= $settings['email_verification'];
-	$userInput->adminActivation 		= $settings['admin_activation'];
-	$userInput->skipCurrentPass 		= true;
-	$userInput->registration			= true;
-	$userInput->saveInsert();
-	$userInput->displayMessages();
-	$errors 							= $userInput->getErrorsArray();
-	unset($userInput);
+	if (verifyFormToken('register', 20)) { // user should wait 20 sec before submission
+		$userInput = new UserFieldsInput();
+		$userInput->validation 				= $settings['display_validation'];
+		$userInput->emailVerification 		= $settings['email_verification'];
+		$userInput->adminActivation 		= $settings['admin_activation'];
+		$userInput->skipCurrentPass 		= true;
+		$userInput->registration			= true;
+		$userInput->saveInsert();
+		$userInput->displayMessages();
+		$errors 							= $userInput->getErrorsArray();
+		unset($userInput);
+	}
 }
 
 if ((!isset($_POST['register']) && !isset($_GET['code'])) || (isset($_POST['register']) && count($errors) > 0)) {
