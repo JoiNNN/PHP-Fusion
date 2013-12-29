@@ -33,7 +33,7 @@ if (isset($_POST['btn_create_backup'])) {
 	}
 	$db_tables = $_POST['db_tables'];
 	if (count($db_tables)) {
-		$crlf = "\n"; 
+		$crlf = "\n";
 		ob_start();
 		@ob_implicit_flush(0);
 		echo "#----------------------------------------------------------".$crlf;
