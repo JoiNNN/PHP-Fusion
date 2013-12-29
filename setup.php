@@ -224,11 +224,11 @@ if (isset($_POST['step']) && $_POST['step'] == "4") {
 					if ($can_write) {
 						$config = "<?php\n";
 						$config .= "// database settings\n";
-						$config .= "\$db_host = \"".$db_host."\";\n";
-						$config .= "\$db_user = \"".$db_user."\";\n";
-						$config .= "\$db_pass = \"".$db_pass."\";\n";
-						$config .= "\$db_name = \"".$db_name."\";\n";
-						$config .= "\$db_prefix = \"".$db_prefix."\";\n";
+						$config .= "\$db_host = '".$db_host."';\n";
+						$config .= "\$db_user = '".$db_user."';\n";
+						$config .= "\$db_pass = '".$db_pass."';\n";
+						$config .= "\$db_name = '".$db_name."';\n";
+						$config .= "\$db_prefix = '".$db_prefix."';\n";
 						$config .= "define(\"DB_PREFIX\", \"".$db_prefix."\");\n";
 						$config .= "define(\"COOKIE_PREFIX\", \"".$cookie_prefix."\");\n";
 						$config .= "?>";
