@@ -28,12 +28,12 @@ function stripsiteinput($text) {
 }
 
 if (isset($_POST['btn_create_backup'])) {
-	if (!check_admin_pass(isset($_POST['user_admin_password']) ? stripinput($_POST['user_admin_password']) : "")) {
+	if (!check_admin_pass((isset($_POST['user_admin_password']) && stripinput($_POST['user_admin_password']) != "") ? stripinput($_POST['user_admin_password']) : " ")) { // require pass even if cookie is set
 		redirect(FUSION_SELF.$aidlink."&status=pw");
 	}
 	$db_tables = $_POST['db_tables'];
 	if (count($db_tables)) {
-		$crlf = "\n";
+		$crlf = "\n"; 
 		ob_start();
 		@ob_implicit_flush(0);
 		echo "#----------------------------------------------------------".$crlf;
@@ -128,7 +128,7 @@ if (!isset($_POST['btn_do_restore']) && (!isset($_GET['action']) || $_GET['actio
 }
 
 if (isset($_POST['btn_do_restore'])) {
-	if (!check_admin_pass(isset($_POST['user_admin_password']) ? stripinput($_POST['user_admin_password']) : "")) {
+	if (!check_admin_pass((isset($_POST['user_admin_password']) && stripinput($_POST['user_admin_password']) != "") ? stripinput($_POST['user_admin_password']) : " ")) { // require pass even if cookie is set
 		redirect(FUSION_SELF.$aidlink."&status=pw");
 	}
 	$result = gzfile(ADMIN."db_backups/".$_POST['file']);
