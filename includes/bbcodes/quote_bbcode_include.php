@@ -39,7 +39,7 @@ for ($i=0;$i < $qcount;$i++) {
 	//Replace default quotes
 	$text = preg_replace('#\[quote\](.*?)\[/quote\]#si', $before.$locale['bb_quote'].$endbefore.'$1'.$after, $text); //replace default quote //HTML 
 	//Replace extended quotes
-	$text = preg_replace('#'.$exta.'(.*?)\[/quote\]#si', $before.'<a class=\'quote-link\' rel=\'$2\' href=\'viewthread.php?pid=$2\' target=\'_blank\'>$1 '.$locale['bb_wrote'].': <span class=\'goto-post-arrow\'>&uarr;</span></a>'.$endbefore.'$3'.$after, $text); //replace quote with valid name and post //HTML 
+	$text = preg_replace('#'.$exta.'(.*?)\[/quote\]#si', $before.'<a class=\'quote-link\' rel=\'$2\' href=\''.FORUM.'viewthread.php?pid=$2\' target=\'_blank\'>$1 '.$locale['bb_wrote'].': <span class=\'goto-post-arrow\'>&uarr;</span></a>'.$endbefore.'$3'.$after, $text); //replace quote with valid name and post //HTML 
 	$text = preg_replace('#'.$extb.'(.*?)\[/quote\]#si', $before.'$1'.$endbefore.'$2'.$after, $text);	//replace quote with valid name and no post //HTML
 }
 
@@ -100,7 +100,7 @@ jQuery('.toggle-quote').click(function(e) {
 jQuery('.quote-link').click(function(e) {
 	var pid = jQuery(this).attr('rel');
 	if (jQuery('#post_' + pid).length) {
-		var target =jQuery('#post_' + pid).offset().top;
+		var target = jQuery('#post_' + pid).offset().top;
 		jQuery('html, body').animate({scrollTop:target}, 200);
 		e.preventDefault();
 	}
