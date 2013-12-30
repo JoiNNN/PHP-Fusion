@@ -230,7 +230,9 @@ if (isset($_POST['step']) && $_POST['step'] == "4") {
 						$config .= "\$db_name = '".$db_name."';\n";
 						$config .= "\$db_prefix = '".$db_prefix."';\n";
 						$config .= "define(\"DB_PREFIX\", \"".$db_prefix."\");\n";
-						$config .= "define(\"COOKIE_PREFIX\", \"".$cookie_prefix."\");\n";
+						$config .= "define(\"COOKIE_PREFIX\", \"".$cookie_prefix."\");\n\n";
+						$config .= "define(\"SECRET_KEY\", \"".str_shuffle(MD5(microtime()))."\");\n";
+						$config .= "define(\"SECRET_KEY_SALT\", \"".str_shuffle(MD5(microtime()))."\");\n";
 						$config .= "?>";
 						$temp = fopen("config.php","w");
 						if (fwrite($temp, $config)) {

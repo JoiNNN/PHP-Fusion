@@ -108,9 +108,17 @@ date_default_timezone_set($settings['default_timezone']);
 //ob_start("ob_gzhandler"); //Uncomment this line and comment the one below to enable output compression.
 ob_start();
 
+// Make sure garbage collection is enabled
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_divisor', 100);
+// Session lifetime. After this time stored data will be seen as 'garbage' and cleaned up by the garbage collection process.
+ini_set('session.gc_maxlifetime', 172800); // 48 hours
+// Session cookie life time
+ini_set('session.cookie_lifetime', 172800); // 48 hours
+
 // Start session. Gets destroyed on log out or user cookie expiration.
 session_cache_limiter('private, must-revalidate'); // prevent document expiry when user hits Back in browser
-session_name('fusion_session');
+session_name(COOKIE_PREFIX.'session');
 
 session_start();
 
@@ -185,15 +193,25 @@ include LOCALE.LOCALESET."global.php";
 require_once CLASSES."Authenticate.class.php";
 
 // Log in user
-if (isset($_POST['login']) && isset($_POST['user_name']) && isset($_POST['user_pass'])) {
+if (isset($_POST['login']) && isset($_POST['user_name']) && isset($_POST['user_pass']) && verifyFormToken('login', 2, 'login_tokenHandler')) {
 	$auth = new Authenticate($_POST['user_name'], $_POST['user_pass'], (isset($_POST['remember_me']) ? true : false));
 	$userdata = $auth->getUserData();
 	unset($auth, $_POST['user_name'], $_POST['user_pass']);
+
+	// remove tokens after login
+	$_SESSION['csrf_tokens'] = array();
+
 } elseif (isset($_GET['logout']) && $_GET['logout'] == "yes") {
 	$userdata = Authenticate::logOut();
 	redirect(BASEDIR."index.php");
 } else {
 	$userdata = Authenticate::validateAuthUser();
+}
+
+function login_tokenHandler($error) {
+	if ($error) {
+		redirect(BASEDIR."login.php?error=5");
+	}
 }
 
 // User level, Admin Rights & User Group definitions
@@ -218,94 +236,88 @@ if (!isset($_COOKIE[COOKIE_PREFIX.'visited'])) {
 $lastvisited = Authenticate::setLastVisitCookie();
 
 // Generate a unique token for forms
-function generateFormToken($form) {
+function generateFormToken($form, $max_tokens = 10) {
 	global $settings, $userdata;
 
-	$user_id = 0;
-	$token_time = time();
-	$algo = $settings['password_algorithm'];
-	$salt = "Some Unique String Here";
-	if (iMEMBER) {
-		$user_id = $userdata['user_id'];
-		$token_time = $userdata['user_lastvisit'];
-		$algo = $userdata['user_algo'];
-		$salt = $userdata['user_salt'];
-	}
+	$user_id	= (isset($userdata['user_id']) ? $userdata['user_id'] : 0);
+	$token_time	= time();
+	$algo		= $settings['password_algorithm'];
+	$key		= $user_id.$token_time.$form.SECRET_KEY;
+	$salt		= md5(isset($userdata['user_salt']) ? $userdata['user_salt'].SECRET_KEY_SALT : SECRET_KEY_SALT);
 
-	// generate a new token
-	$token = $user_id.".".$token_time.".".hash_hmac($algo, $user_id.$token_time.$form, $salt);
-	$_SESSION['csrf_tokens'][] = $token; // add the token to the array
+	// generate a new token and store it
+	$token = $user_id.".".$token_time.".".hash_hmac($algo, $key, $salt);
+	$_SESSION['csrf_tokens'][$form][] = $token;
 
-	// maximum number of tokens to be stored
-	if(isset($_SESSION['csrf_tokens']) && count($_SESSION['csrf_tokens']) > 50) {
-		array_shift($_SESSION['csrf_tokens']); // remove element from beginning
+	// store just one token for each form, if the user is a guest
+	if ($user_id == 0) { $max_tokens = 1; }
+
+	// maximum number of tokens to be stored for each form
+	if ($max_tokens > 0 && count($_SESSION['csrf_tokens'][$form]) > $max_tokens) {
+		array_shift($_SESSION['csrf_tokens'][$form]); // remove first element
 	}
 
 	return $token;
 }
 
 // Verify if a token is set and valid
-function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler") {
-	global $settings, $userdata; $error = array();
+function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler", $debug = FALSE) {
+	global $locale, $settings, $userdata; $error = array();
 
-	// errors IDs and details
-	$errors = array(
-		"1" => "Session not started.",
-		"2" => "Token was not posted.",
-		"3" => "Invalid token.",
-		"4" => "Invalid UserID within token.",
-		"5" => "Invalid token datestamp.",
-		"6" => "Posted too fast. Take a break.",
-		"7" => "Invalid token hash.",
-		"8" => "Invalid token format.",
-	);
+	$user_id	= (isset($userdata['user_id']) ? $userdata['user_id'] : 0);
+	$algo		= $settings['password_algorithm'];
+	$salt		= md5(isset($userdata['user_salt']) ? $userdata['user_salt'].SECRET_KEY_SALT : SECRET_KEY_SALT);
 
-	$user_id = 0;
-	$algo = $settings['password_algorithm'];
-	$salt = "Some Unique String Here";
-	if (iMEMBER) {
-		$user_id = $userdata['user_id'];
-		$algo = $userdata['user_algo'];
-		$salt = $userdata['user_salt'];
-	}
-
+	// check if a session is started
 	if (!isset($_SESSION['csrf_tokens'])) {
-		$error[1] = $errors["1"];
+		$error[1] = $locale['token_error_1'];
+	// check if a token is posted
 	} elseif (!isset($_POST['fusion_token'])) {
-		$error[2] = $errors["2"];
-	} elseif (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'])) {
-		$error[3] = $errors["3"];
+		$error[2] = $locale['token_error_2'];
+	// check if the posted token exists
+	} elseif (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'][$form])) {
+		$error[3] = $locale['token_error_3'];
 	} else {
+		// the checks below are overkill, except the verification of how fast a form was posted 
+		// since at this point for the checks below to return an error would take tampering with
+		// the code inside generateFormToken() to generate an invalid token 
 		$token_data = explode(".", stripinput($_POST['fusion_token']));
+		// check if the token has the correct format
 		if (count($token_data) == 3) {
 			list($tuser_id, $token_time, $hash) = $token_data;
 
+			// check if the logged user has the same ID as the one in token
 			if ($tuser_id != $user_id) {
-				$error[4] = $errors["4"];
+				$error[4] = $locale['token_error_4'];
+			// make sure the token datestamp is a number before performing calculations
 			} elseif (!isnum($token_time)) {
-				$error[5] = $errors["5"];
+				$error[5] = $locale['token_error_5'];
+			// check if a post wasn't made too fast
 			} elseif (time() - $token_time < $post_time) {
-				$error[6] = $errors["6"];
-			} elseif ($hash != hash_hmac($algo, $user_id.$token_time.$form, $salt)) {
-				$error[7] = $errors["7"];
+				$error[6] = $locale['token_error_6'];
+			// check if the hash in token is valid
+			} elseif ($hash != hash_hmac($algo, $user_id.$token_time.$form.SECRET_KEY, $salt)) {
+				$error[7] = $locale['token_error_7'];
 			}
 		} else {
-			$error[8] = $errors["8"];
+			$error[8] = $locale['token_error_8'];
 		}
 	}
 
 	// parse callback function 
 	if (!empty($callback) && function_exists($callback)) {
+		// let's pass some info to the function through arguments, can be useful later
 		$data = array(
-			"post_time" => $post_time,
-			"user_id" 	=> $user_id,
-			"algo" 		=> $algo,
-			"salt" 		=> $salt,
+			"form"		=> $form,
+			"post_time"	=> $post_time,
+			"user_id"	=> $user_id,
+			"algo"		=> $algo,
+			"salt"		=> $salt,
 		);
 		if (isset($token_time)) { $data['token_time'] = $token_time; }
 		if (isset($hash)) { $data['hash'] = $hash; }
 
-		$callback($error, $data);
+		$callback($error, $data, $debug);
 	}
 
 	// check if there are any errors
@@ -314,23 +326,27 @@ function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler") {
 	}
 
 	// remove the token from the array as it has been used
-	foreach ($_SESSION['csrf_tokens'] as $key => $val) {
+	foreach ($_SESSION['csrf_tokens'][$form] as $key => $val) {
 		if ($val == $_POST['fusion_token']) {
-			unset($_SESSION['csrf_tokens'][$key]);
+			unset($_SESSION['csrf_tokens'][$form][$key]);
 		}
 	}
 
 	return TRUE;
 }
 
-function tokenHandler($error, $data) {
+function tokenHandler($error, $data, $debug) {
+	global $locale;
+
 	if ($error) {
-		opentable("Error");
-		echo "We're sorry, there was an error. Please go Back, Refresh the page and try again.";
-		echo "<pre>";
-		print_r($error);
-		print_r($data);
-		echo "</pre>";
+		opentable($locale['token_error_title']);
+		echo "<div class='token-error ".$data['form']."-form-error'>".$locale['token_error']."</div>";
+		if ($debug) {
+			echo "<pre>";
+			print_r($error);
+			print_r($data);
+			echo "</pre>";
+		}
 		closetable();
 	}
 }

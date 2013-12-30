@@ -59,6 +59,7 @@ if (iMEMBER) {
 		openside($locale['global_100']);
 		echo "<div style='text-align:center'>\n";
 		echo "<form name='loginform' method='post' action='".$action_url."'>\n";
+		echo "<input type='hidden' name='fusion_token' value='".generateFormToken('login')."' />"; // form token
 		echo $locale['global_101']."<br />\n<input type='text' name='user_name' class='textbox' style='width:100px' /><br />\n";
 		echo $locale['global_102']."<br />\n<input type='password' name='user_pass' class='textbox' style='width:100px' /><br />\n";
 		echo "<label><input type='checkbox' name='remember_me' value='y' title='".$locale['global_103']."' style='vertical-align:middle;' /></label>\n";

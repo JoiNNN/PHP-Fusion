@@ -52,7 +52,7 @@ if (isset($_POST['previewreply'])) {
 }
 
 if (isset($_POST['postreply'])) {
-	if (verifyFormToken('postreply')) {
+	if (verifyFormToken('postreply', 2)) {
 		$message = trim(stripinput(censorwords($_POST['message'])));
 		$flood = false; $error = 0;
 		$sig = isset($_POST['show_sig']) ? "1" : "0";

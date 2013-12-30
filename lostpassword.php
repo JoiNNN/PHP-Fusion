@@ -34,8 +34,7 @@ function send_password_tokenHandler($error) {
 	global $locale;
 
 	if ($error) {
-		$message = "We're sorry, there was an error. Please go Back, Refresh the page and try again.";
-		echo "<div style='text-align:center'><br />".$message."<br /><br />\n<a href='".BASEDIR."lostpassword.php'>".$locale['406']."</a> -  <a href='".BASEDIR."index.php'>".$locale['403']."</a></div>\n";	
+		echo "<div style='text-align:center'><br />".$locale['token_error']."<br /><br />\n<a href='".BASEDIR."lostpassword.php'>".$locale['406']."</a> -  <a href='".BASEDIR."index.php'>".$locale['403']."</a></div>\n";	
 	}
 }
 

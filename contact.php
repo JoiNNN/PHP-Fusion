@@ -22,65 +22,68 @@ include LOCALE.LOCALESET."contact.php";
 add_to_title($locale['global_200'].$locale['400']);
 
 if (isset($_POST['sendmessage'])) {
-	$error = "";
-	$mailname = isset($_POST['mailname']) ? substr(stripinput(trim($_POST['mailname'])), 0, 50) : "";
-	$email = isset($_POST['email']) ? substr(stripinput(trim($_POST['email'])), 0, 100) : "";
-	$subject = isset($_POST['subject']) ? substr(str_replace(array("\r","\n","@"), "", descript(stripslash(trim($_POST['subject'])))), 0, 50) : "";
-	$message = isset($_POST['message']) ? descript(stripslash(trim($_POST['message']))) : "";
-	if ($mailname == "") {
-		$error .= " <span class='alt'>".$locale['420']."</span><br />\n";
-	}
-	if ($email == "" || !preg_match("/^[-0-9A-Z_\.]{1,50}@([-0-9A-Z_\.]+\.){1,50}([0-9A-Z]){2,4}$/i", $email)) {
-		$error .= " <span class='alt'>".$locale['421']."</span><br />\n";
-	}
-	if ($subject == "") {
-		$error .= " <span class='alt'>".$locale['422']."</span><br />\n";
-	}
-	if ($message == "") {
-		$error .= " <span class='alt'>".$locale['423']."</span><br />\n";
-	}
-	$_CAPTCHA_IS_VALID = false;
-	include INCLUDES."captchas/".$settings['captcha']."/captcha_check.php";
-	if ($_CAPTCHA_IS_VALID == false) {
-		$error .= " <span class='alt'>".$locale['424']."</span><br />\n";
-	}
-	if (!$error) {
-		require_once INCLUDES."sendmail_include.php";
-		$template_result = dbquery("
-			SELECT template_key, template_active, template_sender_name, template_sender_email
-			FROM ".DB_EMAIL_TEMPLATES."
-			WHERE template_key='CONTACT'
-			LIMIT 1");
-		if (dbrows($template_result)) {
-			$template_data = dbarray($template_result);
-			if ($template_data['template_active'] == "1") {
-				if (!sendemail_template("CONTACT", $subject, $message, "", $template_data['template_sender_name'], "", $template_data['template_sender_email'], $mailname, $email)) {
-					$error .= " <span class='alt'>".$locale['425']."</span><br />\n";
+	if (verifyFormToken('contact', 5)) {
+		$error = "";
+		$mailname = isset($_POST['mailname']) ? substr(stripinput(trim($_POST['mailname'])), 0, 50) : "";
+		$email = isset($_POST['email']) ? substr(stripinput(trim($_POST['email'])), 0, 100) : "";
+		$subject = isset($_POST['subject']) ? substr(str_replace(array("\r","\n","@"), "", descript(stripslash(trim($_POST['subject'])))), 0, 50) : "";
+		$message = isset($_POST['message']) ? descript(stripslash(trim($_POST['message']))) : "";
+		if ($mailname == "") {
+			$error .= " <span class='alt'>".$locale['420']."</span><br />\n";
+		}
+		if ($email == "" || !preg_match("/^[-0-9A-Z_\.]{1,50}@([-0-9A-Z_\.]+\.){1,50}([0-9A-Z]){2,4}$/i", $email)) {
+			$error .= " <span class='alt'>".$locale['421']."</span><br />\n";
+		}
+		if ($subject == "") {
+			$error .= " <span class='alt'>".$locale['422']."</span><br />\n";
+		}
+		if ($message == "") {
+			$error .= " <span class='alt'>".$locale['423']."</span><br />\n";
+		}
+		$_CAPTCHA_IS_VALID = false;
+		include INCLUDES."captchas/".$settings['captcha']."/captcha_check.php";
+		if ($_CAPTCHA_IS_VALID == false) {
+			$error .= " <span class='alt'>".$locale['424']."</span><br />\n";
+		}
+		if (!$error) {
+			require_once INCLUDES."sendmail_include.php";
+			$template_result = dbquery("
+				SELECT template_key, template_active, template_sender_name, template_sender_email
+				FROM ".DB_EMAIL_TEMPLATES."
+				WHERE template_key='CONTACT'
+				LIMIT 1");
+			if (dbrows($template_result)) {
+				$template_data = dbarray($template_result);
+				if ($template_data['template_active'] == "1") {
+					if (!sendemail_template("CONTACT", $subject, $message, "", $template_data['template_sender_name'], "", $template_data['template_sender_email'], $mailname, $email)) {
+						$error .= " <span class='alt'>".$locale['425']."</span><br />\n";
+					}
+				} else {
+					if (!sendemail($settings['siteusername'],$settings['siteemail'],$mailname,$email,$subject,$message)) {
+						$error .= " <span class='alt'>".$locale['425']."</span><br />\n";
+					}
 				}
 			} else {
 				if (!sendemail($settings['siteusername'],$settings['siteemail'],$mailname,$email,$subject,$message)) {
 					$error .= " <span class='alt'>".$locale['425']."</span><br />\n";
 				}
 			}
-		} else {
-			if (!sendemail($settings['siteusername'],$settings['siteemail'],$mailname,$email,$subject,$message)) {
-				$error .= " <span class='alt'>".$locale['425']."</span><br />\n";
-			}
 		}
-	}
-	if ($error) {
-		opentable($locale['400']);
-		echo "<div style='text-align:center'><br />\n".$locale['442']."<br /><br />\n".$error."<br />\n".$locale['443']."</div><br />\n";
-		closetable();
-	} else {
-		opentable($locale['400']);
-		echo "<div style='text-align:center'><br />\n".$locale['440']."<br /><br />\n".$locale['441']."</div><br />\n";
-		closetable();
+		if ($error) {
+			opentable($locale['400']);
+			echo "<div style='text-align:center'><br />\n".$locale['442']."<br /><br />\n".$error."<br />\n".$locale['443']."</div><br />\n";
+			closetable();
+		} else {
+			opentable($locale['400']);
+			echo "<div style='text-align:center'><br />\n".$locale['440']."<br /><br />\n".$locale['441']."</div><br />\n";
+			closetable();
+		}
 	}
 } else {
 	opentable($locale['400']);
 	echo $locale['401']."<br /><br />\n";
 	echo "<form name='userform' method='post' action='".FUSION_SELF."'>\n";
+	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('contact')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='0' class='center'>\n<tr>\n";
 	echo "<td width='100' class='tbl'>".$locale['402']."</td>\n";
 	echo "<td class='tbl'><input type='text' name='mailname' maxlength='50' class='textbox' style='width: 200px;' /></td>\n";

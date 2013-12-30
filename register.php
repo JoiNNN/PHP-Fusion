@@ -60,7 +60,7 @@ if (isset($_GET['email']) && isset($_GET['code'])) {
 		redirect("index.php");
 	}
 } elseif (isset($_POST['register'])) {
-	if (verifyFormToken('register', 20)) { // user should wait 20 sec before submission
+	if (verifyFormToken('register', 15)) { // user should wait 15 sec before submission
 		$userInput = new UserFieldsInput();
 		$userInput->validation 				= $settings['display_validation'];
 		$userInput->emailVerification 		= $settings['email_verification'];
