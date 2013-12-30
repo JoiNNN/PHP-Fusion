@@ -29,3 +29,6 @@ dl, dt, dd {
 	width: 40px;
 	margin-right: 4px;
 }
+.forum_breadcrumbs {
+	margin-bottom: 6px;
+}
