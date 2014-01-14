@@ -200,7 +200,7 @@ class Authenticate {
 	public static function validateAuthAdmin ($pass = "") {
 		global $userdata;
 		if (iADMIN) {
-			if ($pass == "" && isset($_COOKIE[COOKIE_ADMIN]) && $_COOKIE[COOKIE_ADMIN] != "") {
+			if ($pass == "" && $required == FALSE && isset($_COOKIE[COOKIE_ADMIN]) && $_COOKIE[COOKIE_ADMIN] != "") {
 				$cookieDataArr = explode(".", $_COOKIE[COOKIE_ADMIN]);
 				if (count($cookieDataArr) == 3) {
 					list($userID, $cookieExpiration, $cookieHash) = $cookieDataArr;
@@ -221,7 +221,7 @@ class Authenticate {
 						}
 					}
 				}
-			} elseif ($pass != "") {
+			} elseif ($pass != "" || $required == TRUE) {
 				$result = dbquery(
 					"SELECT user_admin_algo, user_admin_salt, user_admin_password FROM ".DB_USERS."
 					WHERE user_id='".$userdata['user_id']."' AND user_level>101 AND  user_status='0' AND user_actiontime='0'

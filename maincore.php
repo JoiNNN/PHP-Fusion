@@ -497,9 +497,9 @@ function set_admin_pass($password) {
 }
 
 // Check if admin password matches userdata
-function check_admin_pass($password) {
+function check_admin_pass($password, $required = FALSE) {
 
-	return Authenticate::validateAuthAdmin($password);
+	return Authenticate::validateAuthAdmin($password, $required);
 
 }
 
