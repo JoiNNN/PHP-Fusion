@@ -30,7 +30,7 @@ function __autoload($class) {
 add_to_title($locale['global_200'].$locale['400']);
 opentable($locale['400']);
 
-function send_password_tokenHandler($error) {
+function send_password_token_handler($error) {
 	global $locale;
 
 	if ($error) {
@@ -43,7 +43,7 @@ if (isset($_GET['user_email']) && isset($_GET['account'])) {
 	$obj->checkPasswordRequest($_GET['user_email'], $_GET['account']);
 	$obj->displayOutput();
 } elseif (isset($_POST['send_password'])) {
-	if (verifyFormToken('send_password', 2, 'send_password_tokenHandler')) {
+	if (verify_token('send_password', 2, 'send_password_token_handler')) {
 		$obj->sendPasswordRequest($_POST['email']);
 		$obj->displayOutput();
 	}

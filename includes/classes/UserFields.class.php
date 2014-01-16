@@ -48,7 +48,7 @@ class UserFields {
 
 		$enctype = $this->showAvatarInput ? " enctype='multipart/form-data'" : "";
 		$this->html .= "<form name='".$this->formname."' method='post' action='".$this->formaction."'".$enctype." onsubmit='return ValidateForm(this)'>\n";
-		$this->html .= "<input type='hidden' name='fusion_token' value='".generateFormToken($this->postName, 5)."' />"; // form token
+		$this->html .= "<input type='hidden' name='fusion_token' value='".generate_token($this->postName, 5)."' />"; // form token
 		$this->html .= "<table cellpadding='0' cellspacing='0' class='center edit-profile'>\n";
 
 		$this->renderBasicInputFields();

@@ -116,10 +116,11 @@ ini_set('session.gc_maxlifetime', 172800); // 48 hours
 // Session cookie life time
 ini_set('session.cookie_lifetime', 172800); // 48 hours
 
-// Start session. Gets destroyed on log out or user cookie expiration.
-session_cache_limiter('private, must-revalidate'); // prevent document expiry when user hits Back in browser
+// Prevent document expiry when user hits Back in browser
+session_cache_limiter('private, must-revalidate');
+// Session cookie name
 session_name(COOKIE_PREFIX.'session');
-
+// Start session. Gets destroyed on log out or user cookie expiration.
 session_start();
 
 // Sanitise $_SERVER globals
@@ -193,7 +194,7 @@ include LOCALE.LOCALESET."global.php";
 require_once CLASSES."Authenticate.class.php";
 
 // Log in user
-if (isset($_POST['login']) && isset($_POST['user_name']) && isset($_POST['user_pass']) && verifyFormToken('login', 2, 'login_tokenHandler')) {
+if (isset($_POST['login']) && isset($_POST['user_name']) && isset($_POST['user_pass']) && verify_token('login', 1, 'login_token_handler')) {
 	$auth = new Authenticate($_POST['user_name'], $_POST['user_pass'], (isset($_POST['remember_me']) ? true : false));
 	$userdata = $auth->getUserData();
 	unset($auth, $_POST['user_name'], $_POST['user_pass']);
@@ -208,7 +209,8 @@ if (isset($_POST['login']) && isset($_POST['user_name']) && isset($_POST['user_p
 	$userdata = Authenticate::validateAuthUser();
 }
 
-function login_tokenHandler($error) {
+// Login token handler
+function login_token_handler($error) {
 	if ($error) {
 		redirect(BASEDIR."login.php?error=5");
 	}
@@ -236,9 +238,13 @@ if (!isset($_COOKIE[COOKIE_PREFIX.'visited'])) {
 $lastvisited = Authenticate::setLastVisitCookie();
 
 // Generate a unique token for forms
-function generateFormToken($form, $max_tokens = 10) {
+function generate_token($form, $max_tokens = 10) {
 	global $settings, $userdata;
 
+// reuse a posted token if is valid instead of generating a new one
+if (isset($_POST['fusion_token']) && verify_token($form, 0, FALSE)) {
+	$token = stripinput($_POST['fusion_token']);
+} else {
 	$user_id	= (isset($userdata['user_id']) ? $userdata['user_id'] : 0);
 	$token_time	= time();
 	$algo		= $settings['password_algorithm'];
@@ -256,12 +262,13 @@ function generateFormToken($form, $max_tokens = 10) {
 	if ($max_tokens > 0 && count($_SESSION['csrf_tokens'][$form]) > $max_tokens) {
 		array_shift($_SESSION['csrf_tokens'][$form]); // remove first element
 	}
+}
 
 	return $token;
 }
 
 // Verify if a token is set and valid
-function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler", $debug = FALSE) {
+function verify_token($form, $post_time = 10, $callback = "token_handler", $debug = FALSE) {
 	global $locale, $settings, $userdata; $error = array();
 
 	$user_id	= (isset($userdata['user_id']) ? $userdata['user_id'] : 0);
@@ -275,12 +282,12 @@ function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler", $de
 	} elseif (!isset($_POST['fusion_token'])) {
 		$error[2] = $locale['token_error_2'];
 	// check if the posted token exists
-	} elseif (!in_array($_POST['fusion_token'], $_SESSION['csrf_tokens'][$form])) {
+	} elseif (!in_array($_POST['fusion_token'], isset($_SESSION['csrf_tokens'][$form]) ? $_SESSION['csrf_tokens'][$form] : array())) {
 		$error[3] = $locale['token_error_3'];
 	} else {
 		// the checks below are overkill, except the verification of how fast a form was posted 
 		// since at this point for the checks below to return an error would take tampering with
-		// the code inside generateFormToken() to generate an invalid token 
+		// the code inside generate_token() to generate an invalid token 
 		$token_data = explode(".", stripinput($_POST['fusion_token']));
 		// check if the token has the correct format
 		if (count($token_data) == 3) {
@@ -305,7 +312,7 @@ function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler", $de
 	}
 
 	// parse callback function 
-	if (!empty($callback) && function_exists($callback)) {
+	if ($callback && function_exists($callback)) {
 		// let's pass some info to the function through arguments, can be useful later
 		$data = array(
 			"form"		=> $form,
@@ -326,16 +333,20 @@ function verifyFormToken($form, $post_time = 10, $callback = "tokenHandler", $de
 	}
 
 	// remove the token from the array as it has been used
-	foreach ($_SESSION['csrf_tokens'][$form] as $key => $val) {
-		if ($val == $_POST['fusion_token']) {
-			unset($_SESSION['csrf_tokens'][$form][$key]);
+	if ($post_time > 0) { // token with $post_time 0 are reusable
+		foreach ($_SESSION['csrf_tokens'][$form] as $key => $val) {
+			if ($val == $_POST['fusion_token']) {
+				unset($_SESSION['csrf_tokens'][$form][$key]);
+			}
 		}
 	}
+
 
 	return TRUE;
 }
 
-function tokenHandler($error, $data, $debug) {
+// Default token handler
+function token_handler($error, $data, $debug) {
 	global $locale;
 
 	if ($error) {

@@ -85,31 +85,31 @@ if (isset($_POST['previewpost']) || isset($_POST['add_poll_option'])) {
 	}
 }
 if (isset($_POST['postnewthread'])) {
-	if (verifyFormToken('postnewthread')) {
-		$subject = trim(stripinput(censorwords($_POST['subject'])));
-		$message = trim(stripinput(censorwords($_POST['message'])));
-		$flood = false; $error = 0;
-		$sticky_thread = isset($_POST['sticky_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
-		$lock_thread = isset($_POST['lock_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
-		$sig = isset($_POST['show_sig']) ? 1 : 0;
-		$smileys = isset($_POST['disable_smileys']) || preg_match("#(\[code\](.*?)\[/code\]|\[geshi=(.*?)\](.*?)\[/geshi\]|\[php\](.*?)\[/php\])#si", $message) ? 0 : 1;
-		$thread_poll = 0;
-		$poll_opts = array();
+	$subject = trim(stripinput(censorwords($_POST['subject'])));
+	$message = trim(stripinput(censorwords($_POST['message'])));
+	$flood = false; $error = 0;
+	$sticky_thread = isset($_POST['sticky_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
+	$lock_thread = isset($_POST['lock_thread']) && (iMOD || iSUPERADMIN) ? 1 : 0;
+	$sig = isset($_POST['show_sig']) ? 1 : 0;
+	$smileys = isset($_POST['disable_smileys']) || preg_match("#(\[code\](.*?)\[/code\]|\[geshi=(.*?)\](.*?)\[/geshi\]|\[php\](.*?)\[/php\])#si", $message) ? 0 : 1;
+	$thread_poll = 0;
+	$poll_opts = array();
 
-		if ($fdata['forum_poll'] && checkgroup($fdata['forum_poll'])) {
-			if (isset($_POST['poll_options']) && is_array($_POST['poll_options'])) {
-				foreach ($_POST['poll_options'] as $poll_option) {
-					if (trim($poll_option)) { $poll_opts[] = trim(stripinput(censorwords($poll_option))); }
-					unset($poll_option);
-				}
+	if ($fdata['forum_poll'] && checkgroup($fdata['forum_poll'])) {
+		if (isset($_POST['poll_options']) && is_array($_POST['poll_options'])) {
+			foreach ($_POST['poll_options'] as $poll_option) {
+				if (trim($poll_option)) { $poll_opts[] = trim(stripinput(censorwords($poll_option))); }
+				unset($poll_option);
 			}
-			$thread_poll = (trim($_POST['poll_title']) && (isset($poll_opts) && is_array($poll_opts)) ? 1 : 0);
 		}
+		$thread_poll = (trim($_POST['poll_title']) && (isset($poll_opts) && is_array($poll_opts)) ? 1 : 0);
+	}
 
-		if (iMEMBER) {
-			if ($subject != "" && $message != "") {
-				require_once INCLUDES."flood_include.php";
-				if (!flood_control("post_datestamp", DB_POSTS, "post_author='".$userdata['user_id']."'")) {
+	if (iMEMBER) {
+		if ($subject != "" && $message != "") {
+			require_once INCLUDES."flood_include.php";
+			if (!flood_control("post_datestamp", DB_POSTS, "post_author='".$userdata['user_id']."'")) {
+				if (verify_token('postnewthread')) {
 					$result = dbquery("INSERT INTO ".DB_THREADS." (forum_id, thread_subject, thread_author, thread_views, thread_lastpost, thread_lastpostid, thread_lastuser, thread_postcount, thread_poll, thread_sticky, thread_locked) VALUES('".$_GET['forum_id']."', '$subject', '".$userdata['user_id']."', '0', '".time()."', '0', '".$userdata['user_id']."', '1', '".$thread_poll."', '".$sticky_thread."', '".$lock_thread."')");
 					$thread_id = mysql_insert_id();
 					$result = dbquery("INSERT INTO ".DB_POSTS." (forum_id, thread_id, post_message, post_showsig, post_smileys, post_author, post_datestamp, post_ip, post_ip_type, post_edituser, post_edittime, post_editreason) VALUES ('".$_GET['forum_id']."', '".$thread_id."', '".$message."', '".$sig."', '".$smileys."', '".$userdata['user_id']."', '".time()."', '".USER_IP."', '".USER_IP_TYPE."', '0', '0', '')");
@@ -133,7 +133,7 @@ if (isset($_POST['postnewthread'])) {
 					}
 
 					if ($fdata['forum_attach'] && checkgroup($fdata['forum_attach'])) {
-							// $attach = $_FILES['attach'];
+						// $attach = $_FILES['attach'];
 						foreach($_FILES as $attach){
 							if ($attach['name'] != "" && !empty($attach['name']) && is_uploaded_file($attach['tmp_name'])) {
 								$attachname = stripfilename(substr($attach['name'], 0, strrpos($attach['name'], ".")));
@@ -162,19 +162,21 @@ if (isset($_POST['postnewthread'])) {
 						}
 					}
 				} else {
-						redirect("viewforum.php?forum_id=".$_GET['forum_id']);
+					$error = 7;
 				}
 			} else {
-				$error = 3;
+				redirect("viewforum.php?forum_id=".$_GET['forum_id']);
 			}
 		} else {
-			$error = 4;
+			$error = 3;
 		}
-		if ($error > 2) {
-			redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']);
-		} else {
-			redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$thread_id."");
-		}
+	} else {
+		$error = 4;
+	}
+	if ($error > 2) {
+		redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']);
+	} else {
+		redirect("postify.php?post=new&error=$error&forum_id=".$_GET['forum_id']."&thread_id=".$thread_id."");
 	}
 } else {
 	if (!isset($_POST['previewpost']) && !isset($_POST['add_poll_option'])) {
@@ -194,7 +196,7 @@ if (isset($_POST['postnewthread'])) {
 	if (!isset($_POST['previewpost'])) { echo "<div class='tbl2 forum_breadcrumbs' style='margin-bottom:5px'><a href='index.php'>".$settings['sitename']."</a> &raquo; ".$caption."</div>\n"; }
 
 	echo "<form id='inputform' method='post' action='".FUSION_SELF."?action=newthread&amp;forum_id=".$_GET['forum_id']."' enctype='multipart/form-data'>\n";
-	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('postnewthread')."' />"; // form token
+	echo "<input type='hidden' name='fusion_token' value='".generate_token('postnewthread')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='1' width='100%' class='tbl-border'>\n<tr>\n";
 	echo "<td width='145' class='tbl2'>".$locale['460']."</td>\n";
 	echo "<td class='tbl1'><input type='text' name='subject' value='".$subject."' class='textbox' maxlength='255' style='width: 250px' /></td>\n";

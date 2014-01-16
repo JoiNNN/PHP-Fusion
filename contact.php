@@ -22,7 +22,7 @@ include LOCALE.LOCALESET."contact.php";
 add_to_title($locale['global_200'].$locale['400']);
 
 if (isset($_POST['sendmessage'])) {
-	if (verifyFormToken('contact', 5)) {
+	if (verify_token('contact', 5)) {
 		$error = "";
 		$mailname = isset($_POST['mailname']) ? substr(stripinput(trim($_POST['mailname'])), 0, 50) : "";
 		$email = isset($_POST['email']) ? substr(stripinput(trim($_POST['email'])), 0, 100) : "";
@@ -83,7 +83,7 @@ if (isset($_POST['sendmessage'])) {
 	opentable($locale['400']);
 	echo $locale['401']."<br /><br />\n";
 	echo "<form name='userform' method='post' action='".FUSION_SELF."'>\n";
-	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('contact')."' />"; // form token
+	echo "<input type='hidden' name='fusion_token' value='".generate_token('contact')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='0' class='center'>\n<tr>\n";
 	echo "<td width='100' class='tbl'>".$locale['402']."</td>\n";
 	echo "<td class='tbl'><input type='text' name='mailname' maxlength='50' class='textbox' style='width: 200px;' /></td>\n";

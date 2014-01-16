@@ -28,7 +28,7 @@ add_to_title($locale['global_200'].$locale['u102']);
 $errors = array();
 
 if (isset($_POST['update_profile'])) {
-	if (verifyFormToken('update_profile', 2)) {
+	if (verify_token('update_profile', 2)) {
 		$userInput 						= new UserFieldsInput();
 		$userInput->setUserNameChange($settings['userNameChange']);
 		$userInput->verifyNewEmail		= true;
