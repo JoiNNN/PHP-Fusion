@@ -197,46 +197,31 @@ class Authenticate {
 		}
 	}
 
-	public static function validateAuthAdmin ($pass = "") {
+	public static function validateAuthAdmin ($pass = "", $required = FALSE) {
 		global $userdata;
-		if (iADMIN) {
+		if (iADMIN && $userdata['user_level'] > 101 && $userdata['user_status'] == 0 && $userdata['user_actiontime'] == 0) {
 			if ($pass == "" && $required == FALSE && isset($_COOKIE[COOKIE_ADMIN]) && $_COOKIE[COOKIE_ADMIN] != "") {
 				$cookieDataArr = explode(".", $_COOKIE[COOKIE_ADMIN]);
 				if (count($cookieDataArr) == 3) {
 					list($userID, $cookieExpiration, $cookieHash) = $cookieDataArr;
 
-					if ($cookieExpiration > time()) {
-						$result = dbquery(
-							"SELECT user_admin_algo, user_admin_salt FROM ".DB_USERS."
-							WHERE user_id='".(isnum($userID) ? $userID : 0)."' AND user_level>101 AND  user_status='0' AND user_actiontime='0'
-							LIMIT 1"
-						);
-						if (dbrows($result) == 1) {
-							$user = dbarray($result);
-							$key = hash_hmac($user['user_admin_algo'], $userID.$cookieExpiration, $user['user_admin_salt']);
-							$hash = hash_hmac($user['user_admin_algo'], $userID.$cookieExpiration, $key);
-							if ($cookieHash == $hash) {
-								return true;
-							}
+					if ($userID == $userdata['user_id'] && $cookieExpiration > time()) {
+						$key = hash_hmac($userdata['user_admin_algo'], $userdata['user_id'].$cookieExpiration, $userdata['user_admin_salt']);
+						$hash = hash_hmac($userdata['user_admin_algo'], $userdata['user_id'].$cookieExpiration, $key);
+						if ($cookieHash == $hash) {
+							return true;
 						}
 					}
+					
 				}
 			} elseif ($pass != "" || $required == TRUE) {
-				$result = dbquery(
-					"SELECT user_admin_algo, user_admin_salt, user_admin_password FROM ".DB_USERS."
-					WHERE user_id='".$userdata['user_id']."' AND user_level>101 AND  user_status='0' AND user_actiontime='0'
-					LIMIT 1"
-				);
-				if (dbrows($result)  == 1) {
-					$user = dbarray($result);
-					if ($user['user_admin_algo'] != "md5") {
-						$inputHash = hash_hmac($user['user_admin_algo'], $pass, $user['user_admin_salt']);
-					} else {
-						$inputHash = md5(md5($pass));
-					}
-					if ($inputHash == $user['user_admin_password']) {
-						return true;
-					}
+				if ($userdata['user_admin_algo'] != "md5") {
+					$inputHash = hash_hmac($userdata['user_admin_algo'], $pass, $userdata['user_admin_salt']);
+				} else {
+					$inputHash = md5(md5($pass));
+				}
+				if ($inputHash == $userdata['user_admin_password']) {
+					return true;
 				}
 			}
 		}
@@ -248,6 +233,7 @@ class Authenticate {
 		$result = dbquery("DELETE FROM ".DB_ONLINE." WHERE online_ip='".USER_IP."'");
 		//header("P3P: CP='NOI ADM DEV PSAi COM NAV OUR OTRo STP IND DEM'");
 		Authenticate::_setCookie(COOKIE_USER, "", time() - 1209600, COOKIE_PATH, COOKIE_DOMAIN, false, true);
+		//Authenticate::_setCookie(COOKIE_ADMIN, "", time() - 1209600, COOKIE_PATH."administration/", COOKIE_DOMAIN, false, true);
 		Authenticate::_setCookie(COOKIE_LASTVISIT, "", time() - 1209600, COOKIE_PATH, COOKIE_DOMAIN, false, true);
 
 		// Destroy the session
