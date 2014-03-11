@@ -474,7 +474,7 @@ if ($can_reply && !$fdata['thread_locked']) {
 	require_once INCLUDES."bbcode_include.php";
 	opentable($locale['512']);
 	echo "<form name='inputform' method='post' action='".FORUM."post.php?action=reply&amp;forum_id=".$fdata['forum_id']."&amp;thread_id=".$_GET['thread_id']."'>\n";
-	echo "<input type='hidden' name='fusion_token' value='".generateFormToken('postreply')."' />"; // form token
+	echo "<input type='hidden' name='fusion_token' value='".generate_token('postreply')."' />"; // form token
 	echo "<table cellpadding='0' cellspacing='1' class='tbl-border center'>\n<tr>\n";
 	echo "<td align='center' class='tbl1'><textarea name='message' cols='70' rows='7' class='textbox' style='width:98%'></textarea><br />\n";
 	echo display_bbcodes("360px", "message")."</td>\n";
